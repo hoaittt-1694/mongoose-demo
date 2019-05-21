@@ -1,23 +1,23 @@
 const mongoose = require('mongoose');
-const a = require('../models/user');
-const user = mongoose.model('User');
-const b = require('../models/userpost');
-var userpost = mongoose.model('Userpost');
+require('../models/user');
+require('../models/post');
+const User = mongoose.model('User');
+var Post = mongoose.model('Post');
 
 exports.post_list = function (req, res) {
-    userpost.find().then(function (posts) {
+    Post.find().then(function (posts) {
         res.send(posts);
     })
 };
 
-exports.post_list_comment = function (req, res) {
+exports.list_comment = function (req, res) {
     let currentPage = req.body.currentPage || 0;
     let pageSize = req.body.pageSize || 10;
-    userpost.find({_id: req.params.id}, {comments: {$slice: [pageSize * currentPage, pageSize] }})
+    Post.find({_id: req.params.id}, {comments: {$slice: [pageSize * currentPage, pageSize] }})
         .populate({
-            path: 'userpost.comments',
+            path: 'post.comments',
         })
-        .select('userpost.comments')
+        .select('post.comments')
         .exec(function(err, data) {
             if (err) {
                 res.json({
@@ -35,10 +35,9 @@ exports.post_list_comment = function (req, res) {
 };
 
 exports.post_count_like = function (req, res) {
-
-    userpost.find({_id: req.params.id})
+    Post.find({_id: req.params.id})
         .populate({
-            path: 'userpost.likes',
+            path: 'post.likes',
         })
        .select('likes')
         .exec(function(err, data) {
@@ -59,59 +58,79 @@ exports.post_count_like = function (req, res) {
 };
 
 exports.post_create = function (req, res) {
-    const post = new userpost({
-        author: req.body.author,
+
+    const post = new Post({
+        author: req.body.userId,
         title: req.body.title,
         content: req.body.content,
         date: Date.now()
     });
     post.save()
         .then(data => {
-            res.send(data);
+            res.json({
+                status: 200,
+                data: data,
+                message: 'create post successful'
+            });
         }).catch(err => {
         res.status(500).send({
-            message: err.message || "Some error occurred while creating the CreatePost."
+            message: err.message || "Some error occurred while creating post."
         });
     });
 };
 
 exports.post_update = function (req, res) {
-    userpost.findByIdAndUpdate(req.params.id, {$set: req.body}, function (err, userU) {
-        if (err) return err.message;
-        res.send('Post updated.');
+    Post.findByIdAndUpdate(req.params.id, {$set: req.body}, function (err, post) {
+        if (err) return res.status(500).send({
+            message: err.message || "Update post fail"
+        });
+        res.json({
+            status: 200,
+            message: 'Update post successful'
+        });
     });
 };
 
 exports.post_delete = function (req, res) {
-    userpost.findByIdAndRemove(req.params.id, function (err) {
-        if (err) return err.message;
-        res.send('Deleted successfully!');
+    Post.findByIdAndRemove(req.params.id, function (err) {
+        if (err) return res.status(500).send({
+            message: err.message || "Update post fail"
+        });
+        res.json({
+            status: 200,
+            message: 'Delete post successfully!'
+        });
     })
 };
 
 exports.create_comment = function (req, res) {
-    let commentListToAdd = [{
+    let commentListToAdd = {
         "user": req.body.user,
         "message": req.body.message,
         "date": Date.now()
-    }];
-    userpost.update({_id:req.params.id}, {$push: { comments: commentListToAdd }  }, {}, function (err, user) {
-        console.log(commentListToAdd);
-        if (err) return err.message;
-        res.send(user);
+    };
+    Post.update({_id:req.params.id}, {$push: { comments: commentListToAdd }  }, {}, function (err, user) {
+        if (err) return res.status(500).send({
+            message: err.message || "Create comment fail"
+        });
+        res.json({
+            status: 200,
+            data: user,
+            message: 'Create comment successfully!'
+        });
     });
 };
 
 exports.update_comment = function (req, res) {
-    userpost.update({'comments._id': req.params.commentId},
+    Post.update({'comments._id': req.params.commentId},
         {'$set': {
             'comments.$.message': req.body.message,
         }},
-        function(err,model) {
+        function(err) {
             if(err){
                 return res.status(500).json({'message': err.message});
             }
-            return res.status(200).json(model);
+            return res.status(200).json('Update comment success');
         });
 };
 
@@ -119,9 +138,9 @@ exports.delete_comment = function (req, res) {
     let post_id = req.params.postId,
         comment_id = req.params.commentId;
 
-    userpost.findByIdAndUpdate(
+    Post.findByIdAndUpdate(
         post_id,
-        { $pull: { 'comments': {  _id: comment_id } } },function(err,model){
+        { $pull: { 'comments': {  _id: comment_id } } },function(err){
             if(err){
                 return res.status(500).json({'message': err.message});
             }
@@ -131,15 +150,18 @@ exports.delete_comment = function (req, res) {
 
 exports.create_like = function (req, res) {
     let commentListToAdd = (req.body._id);
-    userpost.update({_id: req.params.id},
+    Post.update({_id: req.params.id},
         {$push: {'likes': commentListToAdd}},
         {safe: true, upsert: true},
         function(err, doc) {
-            if(err){
-                return res.status(500).json({'message': 'fail'});
-            }else{
-                return res.status(200).json({'message': 'success'});
-            }
+            if (err) return res.status(500).send({
+                message: err.message || "Create like fail"
+            });
+            res.json({
+                status: 200,
+                data: doc,
+                message: 'Create like successfully!'
+            });
         }
     );
 };
@@ -147,8 +169,7 @@ exports.create_like = function (req, res) {
 exports.delete_like = function (req, res) {
     let post_id = req.params.postId,
         like_id = req.params.likeId;
-
-    userpost.findByIdAndUpdate(
+    Post.findByIdAndUpdate(
         post_id,
         { $pull: { likes: like_id } },function(err,model){
             if(err){
