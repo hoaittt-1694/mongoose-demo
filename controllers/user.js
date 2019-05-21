@@ -47,4 +47,3 @@ exports.user_delete = function (req, res) {
         res.send('Deleted successfully!');
     })
 };
-

@@ -11,13 +11,18 @@ router.put('/:id/update', user_controller.user_update);
 router.delete('/:id/delete', user_controller.user_delete);
 
 router.get('/post/list', userpost_controller.post_list);
-router.get('/post/:id', userpost_controller.post_listcomment);
 router.post('/post/create', userpost_controller.post_create);
+router.put('/post/:id/update', userpost_controller.post_update);
+router.delete('/post/:id/delete', userpost_controller.post_delete);
+
+router.get('/post/:id', userpost_controller.post_list_comment);
+router.get('/post/:id/like', userpost_controller.post_count_like);
 
 router.put('/post/:id/create-comment', userpost_controller.create_comment);
 router.put('/post/:postId/update-comment/:commentId', userpost_controller.update_comment);
 router.delete('/post/:postId/delete-comment/:commentId', userpost_controller.delete_comment);
 
 router.put('/post/:id/create-like', userpost_controller.create_like);
+router.delete('/post/:postId/delete-like/:likeId', userpost_controller.delete_like);
 
 module.exports = router;

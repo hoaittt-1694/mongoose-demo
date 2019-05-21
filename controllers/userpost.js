@@ -10,7 +10,7 @@ exports.post_list = function (req, res) {
     })
 };
 
-exports.post_listcomment = function (req, res) {
+exports.post_list_comment = function (req, res) {
     let currentPage = req.body.currentPage || 0;
     let pageSize = req.body.pageSize || 10;
     userpost.find({_id: req.params.id}, {comments: {$slice: [pageSize * currentPage, pageSize] }})
@@ -34,6 +34,30 @@ exports.post_listcomment = function (req, res) {
         });
 };
 
+exports.post_count_like = function (req, res) {
+
+    userpost.find({_id: req.params.id})
+        .populate({
+            path: 'userpost.likes',
+        })
+       .select('likes')
+        .exec(function(err, data) {
+            if (err) {
+                res.json({
+                    status: 401,
+                    message: 'something went wrong!',
+                    err: err,
+                })
+            } else {
+                res.json({
+                    status: 200,
+                    data: data,
+                    count: data[0].likes.length
+                })
+            }
+        });
+};
+
 exports.post_create = function (req, res) {
     const post = new userpost({
         author: req.body.author,
@@ -49,6 +73,20 @@ exports.post_create = function (req, res) {
             message: err.message || "Some error occurred while creating the CreatePost."
         });
     });
+};
+
+exports.post_update = function (req, res) {
+    userpost.findByIdAndUpdate(req.params.id, {$set: req.body}, function (err, userU) {
+        if (err) return err.message;
+        res.send('Post updated.');
+    });
+};
+
+exports.post_delete = function (req, res) {
+    userpost.findByIdAndRemove(req.params.id, function (err) {
+        if (err) return err.message;
+        res.send('Deleted successfully!');
+    })
 };
 
 exports.create_comment = function (req, res) {
@@ -80,7 +118,6 @@ exports.update_comment = function (req, res) {
 exports.delete_comment = function (req, res) {
     let post_id = req.params.postId,
         comment_id = req.params.commentId;
-    console.log(post_id, comment_id);
 
     userpost.findByIdAndUpdate(
         post_id,
@@ -105,6 +142,20 @@ exports.create_like = function (req, res) {
             }
         }
     );
+};
+
+exports.delete_like = function (req, res) {
+    let post_id = req.params.postId,
+        like_id = req.params.likeId;
+
+    userpost.findByIdAndUpdate(
+        post_id,
+        { $pull: { likes: like_id } },function(err,model){
+            if(err){
+                return res.status(500).json({'message': err.message});
+            }
+            return res.status(200).json('Delete like success');
+        });
 };
 
 
