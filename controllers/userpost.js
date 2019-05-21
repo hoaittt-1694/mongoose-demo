@@ -65,31 +65,32 @@ exports.create_comment = function (req, res) {
 };
 
 exports.update_comment = function (req, res) {
-    let commentListToAdd = [{
-        "user": req.body.user,
-        "message": req.body.message,
-        "date": Date.now()
-    }];
-    userpost.update({_id:req.params.id}, {$push: { comments: commentListToAdd }  }, {}, function (err, user) {
-        console.log(commentListToAdd);
-        if (err) return err.message;
-        res.send(user);
-    });
+    userpost.update({'comments._id': req.params.commentId},
+        {'$set': {
+            'comments.$.message': req.body.message,
+        }},
+        function(err,model) {
+            if(err){
+                return res.status(500).json({'message': err.message});
+            }
+            return res.status(200).json(model);
+        });
 };
 
 exports.delete_comment = function (req, res) {
-    let commentListToAdd = [{
-        "user": req.body.user,
-        "message": req.body.message,
-        "date": Date.now()
-    }];
-    userpost.update({_id:req.params.id}, {$push: { comments: commentListToAdd }  }, {}, function (err, user) {
-        console.log(commentListToAdd);
-        if (err) return err.message;
-        res.send(user);
-    });
-};
+    let post_id = req.params.postId,
+        comment_id = req.params.commentId;
+    console.log(post_id, comment_id);
 
+    userpost.findByIdAndUpdate(
+        post_id,
+        { $pull: { 'comments': {  _id: comment_id } } },function(err,model){
+            if(err){
+                return res.status(500).json({'message': err.message});
+            }
+            return res.status(200).json('Delete comment success');
+        });
+};
 
 exports.create_like = function (req, res) {
     let commentListToAdd = (req.body._id);
@@ -98,9 +99,9 @@ exports.create_like = function (req, res) {
         {safe: true, upsert: true},
         function(err, doc) {
             if(err){
-                return res.status(500).json({'msg': 'fail'});
+                return res.status(500).json({'message': 'fail'});
             }else{
-                return res.status(200).json({'msg': 'success'});
+                return res.status(200).json({'message': 'success'});
             }
         }
     );
