@@ -4,7 +4,7 @@ require('../models/post');
 const User = mongoose.model('User');
 var Post = mongoose.model('Post');
 
-exports.post_list = function (req, res) {
+exports.list_post = function (req, res) {
     Post.find().then(function (posts) {
         res.send(posts);
     })
@@ -13,7 +13,7 @@ exports.post_list = function (req, res) {
 exports.list_comment = function (req, res) {
     let currentPage = req.body.currentPage || 0;
     let pageSize = req.body.pageSize || 10;
-    Post.find({_id: req.params.id}, {comments: {$slice: [pageSize * currentPage, pageSize] }})
+    Post.find({ _id: req.params.id }, { comments: { $slice: [pageSize * currentPage, pageSize] }})
         .populate({
             path: 'post.comments',
         })
@@ -35,7 +35,7 @@ exports.list_comment = function (req, res) {
 };
 
 exports.post_count_like = function (req, res) {
-    Post.find({_id: req.params.id})
+    Post.find({ _id: req.params.id })
         .populate({
             path: 'post.likes',
         })
@@ -57,8 +57,7 @@ exports.post_count_like = function (req, res) {
         });
 };
 
-exports.post_create = function (req, res) {
-
+exports.create_post = function (req, res) {
     const post = new Post({
         author: req.body.userId,
         title: req.body.title,
@@ -67,10 +66,17 @@ exports.post_create = function (req, res) {
     });
     post.save()
         .then(data => {
-            res.json({
-                status: 200,
-                data: data,
-                message: 'create post successful'
+            User.update({ _id:req.body.userId }, { $push: { posts: post._id } }, {}, function (err, user) {
+                if (err)
+                    return res.status(500).send({
+                    message: err.message || "Insert postId for user fail"
+                });
+                res.json({
+                    status: 200,
+                    post: data,
+                    user: user,
+                    message: 'update postId for user successful'
+                });
             });
         }).catch(err => {
         res.status(500).send({
@@ -79,9 +85,10 @@ exports.post_create = function (req, res) {
     });
 };
 
-exports.post_update = function (req, res) {
-    Post.findByIdAndUpdate(req.params.id, {$set: req.body}, function (err, post) {
-        if (err) return res.status(500).send({
+exports.update_post = function (req, res) {
+    Post.findByIdAndUpdate(req.params.id, { $set: req.body }, function (err) {
+        if (err)
+            return res.status(500).send({
             message: err.message || "Update post fail"
         });
         res.json({
@@ -91,16 +98,25 @@ exports.post_update = function (req, res) {
     });
 };
 
-exports.post_delete = function (req, res) {
-    Post.findByIdAndRemove(req.params.id, function (err) {
-        if (err) return res.status(500).send({
-            message: err.message || "Update post fail"
-        });
-        res.json({
-            status: 200,
-            message: 'Delete post successfully!'
-        });
-    })
+exports.delete_post = function (req, res) {
+    Post.findOne({ _id:req.params.id }).
+    populate('author').
+    exec(function (err, post) {
+        let userId = post.author._id;
+        return post.remove(function (err) {
+            if (!err) {
+                User.findByIdAndUpdate(
+                    userId,
+                    { $pull: { posts: req.params.id } },function(err) {
+                        if (err) {
+                            return res.status(500).json({ 'message': err.message });
+                        }
+                        return res.status(200).json('Delete like success');
+                    });
+            }
+        })
+
+    });
 };
 
 exports.create_comment = function (req, res) {
@@ -109,8 +125,9 @@ exports.create_comment = function (req, res) {
         "message": req.body.message,
         "date": Date.now()
     };
-    Post.update({_id:req.params.id}, {$push: { comments: commentListToAdd }  }, {}, function (err, user) {
-        if (err) return res.status(500).send({
+    Post.update({ _id:req.params.id }, { $push: { comments: commentListToAdd } }, {}, function (err, user) {
+        if (err)
+            return res.status(500).send({
             message: err.message || "Create comment fail"
         });
         res.json({
@@ -122,13 +139,13 @@ exports.create_comment = function (req, res) {
 };
 
 exports.update_comment = function (req, res) {
-    Post.update({'comments._id': req.params.commentId},
-        {'$set': {
+    Post.update({ 'comments._id': req.params.commentId },
+        { '$set': {
             'comments.$.message': req.body.message,
-        }},
-        function(err) {
-            if(err){
-                return res.status(500).json({'message': err.message});
+        } },
+        function (err) {
+            if (err) {
+                return res.status(500).json({ 'message': err.message });
             }
             return res.status(200).json('Update comment success');
         });
@@ -137,12 +154,11 @@ exports.update_comment = function (req, res) {
 exports.delete_comment = function (req, res) {
     let post_id = req.params.postId,
         comment_id = req.params.commentId;
-
     Post.findByIdAndUpdate(
         post_id,
-        { $pull: { 'comments': {  _id: comment_id } } },function(err){
-            if(err){
-                return res.status(500).json({'message': err.message});
+        { $pull: { 'comments': { _id: comment_id } } },function(err) {
+            if (err) {
+                return res.status(500).json({ 'message': err.message });
             }
             return res.status(200).json('Delete comment success');
         });
@@ -150,11 +166,12 @@ exports.delete_comment = function (req, res) {
 
 exports.create_like = function (req, res) {
     let commentListToAdd = (req.body._id);
-    Post.update({_id: req.params.id},
-        {$push: {'likes': commentListToAdd}},
-        {safe: true, upsert: true},
+    Post.update({ _id: req.params.id },
+        { $push: { 'likes': commentListToAdd } },
+        { safe: true, upsert: true },
         function(err, doc) {
-            if (err) return res.status(500).send({
+            if (err)
+                return res.status(500).send({
                 message: err.message || "Create like fail"
             });
             res.json({
@@ -171,9 +188,9 @@ exports.delete_like = function (req, res) {
         like_id = req.params.likeId;
     Post.findByIdAndUpdate(
         post_id,
-        { $pull: { likes: like_id } },function(err,model){
-            if(err){
-                return res.status(500).json({'message': err.message});
+        { $pull: { likes: like_id } },function(err){
+            if (err) {
+                return res.status(500).json({ 'message': err.message });
             }
             return res.status(200).json('Delete like success');
         });

@@ -8,15 +8,15 @@ exports.list_user = function (req, res) {
     })
 };
 
-exports.user_create = function (req, res) {
-    let userN = new User(
+exports.create_user = function (req, res) {
+    let user = new User(
         {
             name: req.body.name,
             email: req.body.email
         }
     );
 
-    userN.save()
+    user.save()
         .then(data => {
             res.json({
                 status: 200,
@@ -31,18 +31,20 @@ exports.user_create = function (req, res) {
 };
 
 exports.user_detail = function (req, res) {
-    User.findById(req.params.id, function (err, userD) {
-        if (err) return res.status(500).send({
+    User.findById(req.params.id, function (err, user) {
+        if (err)
+            return res.status(500).send({
             message: err.message || "Not found user"
         });
-        res.status(200).json(userD);
+        res.status(200).json(user);
     })
 };
 
-exports.user_update = function (req, res) {
-    User.findByIdAndUpdate(req.params.id, {$set: req.body}, function (err) {
-        if (err) return res.status(500).send({
-            message: err.message || "Update user fail"
+exports.update_user = function (req, res) {
+    User.findByIdAndUpdate(req.params.id, { $set: req.body }, function (err) {
+        if (err)
+            return res.status(500).send({
+            message: err.message || "Update user failure"
         });
         res.json({
             status: 200,
@@ -52,9 +54,10 @@ exports.user_update = function (req, res) {
 };
 
 
-exports.user_delete = function (req, res) {
+exports.delete_user = function (req, res) {
     User.findByIdAndRemove(req.params.id, function (err) {
-        if (err) return res.status(500).send({
+        if (err)
+            return res.status(500).send({
             message: err.message || "Delete user fail"
         });
         res.json({
@@ -65,6 +68,17 @@ exports.user_delete = function (req, res) {
 };
 
 exports.user_list_post = function (req, res) {
-
+    User.findOne({ _id: req.params.userId })
+        .populate('posts')
+        .select('post')
+        .exec(function (err, user) {
+        if (err) return res.status(500).send({
+            message: err.message || "get list post of a user fail"
+        });
+        res.json({
+            status: 200,
+            data: user,
+        });
+    });
 };
 
