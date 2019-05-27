@@ -196,4 +196,177 @@ exports.delete_like = function (req, res) {
         });
 };
 
+exports.get_post_gt_five_comment = function (req, res) {
+    Post.aggregate([
+        {
+            $unwind: "$comments"
+        }
+        ,
+        {
+            $group: {
+                "_id": '$_id',
+                "count": {"$sum": 1}
+            }
+        },
+        {
+            $match: {
+                "count": { "$gte": 5 }
+            }
+        }
+    ]).
+    exec(function (err, post) {
+        return res.status(200).json(post);
 
+    });
+};
+
+exports.get_post_five_comment_nearest = function (req, res) {
+    Post.aggregate([
+        {   $project: {
+                threeComment: {
+                    $slice: [ "$comments", -3 ]
+                },
+            }
+        }
+        ]).exec(function (err, comment) {
+        return res.status(200).json(comment);
+    });
+};
+
+exports.get_user_like_a_post = function (req, res) {
+    Post.aggregate([
+        {
+            $match: {
+                "_id": mongoose.Types.ObjectId(req.params.id)
+            }
+        },
+        {
+            $unwind: {path: "$likes"},
+        },
+        {
+            $lookup:
+                {
+                    from: "users",
+                    localField: "likes",
+                    foreignField: "_id",
+                    as: "liked_user"
+                }
+        },
+        {
+            $project: {
+                content: 1,
+                "liked_user.name" : 1,
+                "liked_user.email" : 1,
+                "count_comment": {
+                    $size: "$comments"
+                }
+            }
+        },
+        {
+            $group: {
+                "_id": '$_id',
+                "list_user_like" : {
+                    $push: {
+                        $arrayElemAt: ["$liked_user", 0]
+                    }
+                },
+            }
+        },
+        ]).exec(function (err, userLike) {
+        return res.status(200).json(userLike);
+    });
+};
+
+exports.get_user_unlike_a_post = function (req, res) {
+    User.aggregate([
+        {
+            $lookup:
+                {
+                    from: "posts",
+                    let: {
+                        user_id: "$_id"
+                    },
+                    pipeline: [
+                        {
+                            $unwind: {path: "$likes"},
+                        },
+                        {
+                            $match:
+                                {
+                                    $expr: {
+                                        $eq: ["$likes", "$$user_id"]
+                                    },
+                                    "_id": mongoose.Types.ObjectId(req.params.id),
+                                }
+                        }
+                    ],
+                    as: "liked_post"
+                }
+        },
+        {
+          $addFields: {
+              no_like: {
+                  $eq: [ {$size: '$liked_post'}, 0]
+              }
+          }
+        },
+        {
+            $match: {
+                'no_like': true,
+            }
+        },
+        {
+            $project: {
+                _id: 1,
+                name : 1,
+                email : 1,
+            }
+        }
+    ]).exec(function (err, userLike) {
+        return res.status(200).json(userLike);
+    });
+};
+
+exports.get_user_comment_a_post = function (req, res) {
+    Post.aggregate([
+        {
+            $match: {
+                "_id": mongoose.Types.ObjectId(req.params.id)
+            }
+        },
+        {
+            $unwind: {
+                path: "$comments"
+            },
+        },
+        {
+            $lookup:
+                {
+                    from: "users",
+                    localField: "comments.user",
+                    foreignField: "_id",
+                    as: "commented_user"
+                }
+        },
+        {
+            $project: {
+                content: 1,
+                "commented_user._id" : 1,
+                "commented_user.name" : 1,
+                "commented_user.email" : 1,
+            }
+        },
+        {
+            $group: {
+                _id: '$_id',
+                list_user_comment: {
+                    $addToSet: {
+                        $arrayElemAt: ["$commented_user", 0]
+                    }
+                }
+            }
+        },
+    ]).exec(function (err, listUserComment) {
+        return res.status(200).json(listUserComment);
+    });
+};

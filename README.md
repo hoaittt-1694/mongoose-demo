@@ -37,7 +37,7 @@ Collection posts:
 | title      | string       |                    |          | ' '      |                       |              |
 | content    | string       |                    |          | ' '      |                       |              |
 | date       | Date         |                    | o        |         |                       |              |
-| comments   | Embedded document |               |          |         |                       |              |
+| comments   | Embedded Documents |               |          |         |                       |              |
 | likes      | array DBrefs | reference to users |          |         |                       |              |
 
 ### List function

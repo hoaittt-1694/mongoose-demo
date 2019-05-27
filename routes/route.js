@@ -25,4 +25,10 @@ router.get('/post/:id/like', post_controller.post_count_like);
 router.post('/post/:id/create-like', post_controller.create_like);
 router.delete('/post/:postId/delete-like/:likeId', post_controller.delete_like);
 
+router.get('/post/gt-five-comment', post_controller.get_post_gt_five_comment);
+router.get('/post/five-comment-nearest', post_controller.get_post_five_comment_nearest);
+router.get('/post/:id/user-like-post', post_controller.get_user_like_a_post);
+router.get('/post/:id/user-unlike-post', post_controller.get_user_unlike_a_post);
+router.get('/post/:id/user-comment-post', post_controller.get_user_comment_a_post);
+
 module.exports = router;
