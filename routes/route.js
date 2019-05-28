@@ -30,5 +30,6 @@ router.get('/post/five-comment-nearest', post_controller.get_post_five_comment_n
 router.get('/post/:id/user-like-post', post_controller.get_user_like_a_post);
 router.get('/post/:id/user-unlike-post', post_controller.get_user_unlike_a_post);
 router.get('/post/:id/user-comment-post', post_controller.get_user_comment_a_post);
+router.get('/post/:id/user-no-comment-post', post_controller.get_user_no_comment_a_post);
 
 module.exports = router;

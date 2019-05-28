@@ -304,15 +304,10 @@ exports.get_user_unlike_a_post = function (req, res) {
                 }
         },
         {
-          $addFields: {
-              no_like: {
-                  $eq: [ {$size: '$liked_post'}, 0]
-              }
-          }
-        },
-        {
             $match: {
-                'no_like': true,
+                liked_post:  {
+                    $eq: []
+                }
             }
         },
         {
@@ -322,8 +317,8 @@ exports.get_user_unlike_a_post = function (req, res) {
                 email : 1,
             }
         }
-    ]).exec(function (err, userLike) {
-        return res.status(200).json(userLike);
+    ]).exec(function (err, userUnLike) {
+        return res.status(200).json(userUnLike);
     });
 };
 
@@ -368,5 +363,50 @@ exports.get_user_comment_a_post = function (req, res) {
         },
     ]).exec(function (err, listUserComment) {
         return res.status(200).json(listUserComment);
+    });
+};
+
+exports.get_user_no_comment_a_post = function (req, res) {
+    User.aggregate([
+        {
+            $lookup:
+                {
+                    from: "posts",
+                    let: {
+                        user_id: "$_id"
+                    },
+                    pipeline: [
+                        {
+                            $unwind: {path: "$comments"},
+                        },
+                        {
+                            $match:
+                                {
+                                    $expr: {
+                                        $eq: ["$comments.user", "$$user_id"]
+                                    },
+                                    "_id": mongoose.Types.ObjectId(req.params.id),
+                                }
+                        }
+                    ],
+                    as: "commented_post"
+                }
+        },
+        {
+            $match: {
+                commented_post:  {
+                    $eq: []
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 1,
+                name : 1,
+                email : 1,
+            }
+        }
+    ]).exec(function (err, userNoComment) {
+        return res.status(200).json(userNoComment);
     });
 };
