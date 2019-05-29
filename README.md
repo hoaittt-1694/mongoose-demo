@@ -46,4 +46,6 @@ Collection posts:
 3. Get list post of user.
 4. Comment: Create comment, get comment a post, edit, delete comment.
 5. Like: Create like, count like of post, delete like.
+6. List user like, unlike, comment, no comment a post.
+7. Get 3 comment nestest, get post >= 5 comment
 
